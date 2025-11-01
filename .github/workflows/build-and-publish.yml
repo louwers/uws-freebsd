@@ -89,24 +89,22 @@ jobs:
           path: uWebSockets.js
           ref: ${{ needs.check-version.outputs.source_commit }}
       
-      - name: Apply FreeBSD patch
-        run: |
-          cd uWebSockets.js
-          echo '#define __linux 1' > build.c.temp
-          cat build.c >> build.c.temp
-          mv build.c.temp build.c
-          sed -i 's/#define OS "linux"/#define OS "freebsd"/' build.c
-          sed -i 's/clang-18/clang18/' build.c
-          sed -i 's/clang++-18/clang++18/' build.c
-      
       - name: Build in FreeBSD VM
-        uses: vmactions/freebsd-vm@v1
+        uses: acj/freebsd-firecracker-action@v0.6.0
         with:
-          usesh: true
-          prepare: |
-            pkg install -y cmake llvm18
+          disk-size: 4G
           run: |
+            # Apply FreeBSD patch
             cd uWebSockets.js
+            echo '#define __linux 1' > build.c.temp
+            cat build.c >> build.c.temp
+            mv build.c.temp build.c
+            sed -i '' 's/#define OS "linux"/#define OS "freebsd"/' build.c
+            sed -i '' 's/clang-18/clang18/' build.c
+            sed -i '' 's/clang++-18/clang++18/' build.c
+            
+            # Install dependencies and build
+            sudo pkg install -y cmake llvm18
             make
       
       - name: List built files
