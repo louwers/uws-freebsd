@@ -1,5 +1,5 @@
 {
-  "name": "@louwers/bWebSockets.js",
+  "name": "@louwers/bws.js",
   "version": "0.0.1",
   "description": "FreeBSD build of uWebSockets.js",
   "main": "uws.js",

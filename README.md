@@ -1,11 +1,11 @@
-# @louwers/bWebSockets.js
+# @louwers/bws.js
 
 FreeBSD build of [uWebSockets.js](https://github.com/uNetworking/uWebSockets.js) - a highly scalable WebSocket & HTTP server for Node.js.
 
 ## Installation
 
 ```bash
-npm install @louwers/bWebSockets.js
+npm install @louwers/bws.js
 ```
 
 ## About
@@ -17,7 +17,7 @@ uWebSockets.js is one of the most performant WebSocket and HTTP server implement
 ## Usage
 
 ```javascript
-const uWS = require('@louwers/bWebSockets.js');
+const uWS = require('@louwers/bws.js');
 
 const app = uWS.App().get('/*', (res, req) => {
   res.end('Hello World!');

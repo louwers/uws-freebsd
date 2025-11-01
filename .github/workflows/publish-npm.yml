@@ -151,6 +151,6 @@ jobs:
           RELEASE_NAME="${{ steps.release.outputs.release_name }}"
           echo "## Package Published Successfully! 🎉" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Package**: @louwers/bWebSockets.js" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package**: @louwers/bws.js" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: ${{ steps.package-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Binary Assets from**: [$RELEASE_NAME](https://github.com/louwers/uws-freebsd/releases/tag/$RELEASE_NAME)" >> $GITHUB_STEP_SUMMARY
