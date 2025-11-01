@@ -1,0 +1,40 @@
+name: Build and Release uWebSockets.js
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout uWebSockets.js repository
+        uses: actions/checkout@v4
+        with:
+          repository: uNetworking/uWebSockets.js
+          submodules: recursive
+      
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang-18 clang++-18 cmake
+      
+      - name: Build uWebSockets.js
+        run: make
+      
+      - name: List built files
+        run: ls -lh dist/
+      
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/uws_linux_x64_*.node
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
