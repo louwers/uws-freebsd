@@ -50,16 +50,15 @@ jobs:
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: Checkout uWebSockets.js submodule at specific version
-        if: github.event_name == 'workflow_dispatch'
+      - name: Checkout uWebSockets.js repository
         run: |
+          git clone --recursive https://github.com/uNetworking/uWebSockets.js.git
           cd uWebSockets.js
-          git fetch --all --tags
-          git checkout ${{ inputs.uwebsockets_version }}
-          git submodule update --init --recursive
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            git checkout ${{ inputs.uwebsockets_version }}
+            git submodule update --init --recursive
+          fi
 
       - name: Prepare build.c for FreeBSD
         run: |
@@ -115,16 +114,15 @@ jobs:
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: Checkout uWebSockets.js submodule at specific version
-        if: github.event_name == 'workflow_dispatch'
+      - name: Checkout uWebSockets.js repository
         run: |
+          git clone --recursive https://github.com/uNetworking/uWebSockets.js.git
           cd uWebSockets.js
-          git fetch --all --tags
-          git checkout ${{ inputs.uwebsockets_version }}
-          git submodule update --init --recursive
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            git checkout ${{ inputs.uwebsockets_version }}
+            git submodule update --init --recursive
+          fi
 
       - name: Build for Linux
         run: |
@@ -167,16 +165,15 @@ jobs:
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: Checkout uWebSockets.js submodule at specific version
-        if: github.event_name == 'workflow_dispatch'
+      - name: Checkout uWebSockets.js repository
         run: |
+          git clone --recursive https://github.com/uNetworking/uWebSockets.js.git
           cd uWebSockets.js
-          git fetch --all --tags
-          git checkout ${{ inputs.uwebsockets_version }}
-          git submodule update --init --recursive
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            git checkout ${{ inputs.uwebsockets_version }}
+            git submodule update --init --recursive
+          fi
 
       - name: Build for macOS
         run: |
