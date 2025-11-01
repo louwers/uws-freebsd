@@ -120,7 +120,6 @@ jobs:
           fi
       
       - name: Create Release
-        if: needs.check-version.outputs.should_build == 'true'
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
@@ -129,10 +128,9 @@ jobs:
           files: uWebSockets.js/dist/uws_freebsd_x64_*.node
           draft: false
           prerelease: false
-          generate_release_notes: true
           body: |
             FreeBSD build of uWebSockets.js ${{ needs.check-version.outputs.version }}
             
-            Source commit: ${{ needs.check-version.outputs.source_commit }}
+            Source commit: https://github.com/uNetworking/uWebSockets.js/commit/${{ needs.check-version.outputs.source_commit }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
