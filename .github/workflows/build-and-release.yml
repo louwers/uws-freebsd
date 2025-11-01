@@ -20,19 +20,19 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake wget curl
-          # Install LLVM/Clang 18
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 18
-          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 100
-          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-18 100
+          sudo apt-get install -y build-essential cmake
       
       - name: Build uWebSockets.js
         run: make
       
       - name: List built files
-        run: ls -lh dist/
+        run: |
+          if [ -d "dist" ]; then
+            ls -lh dist/
+          else
+            echo "Warning: dist directory not found"
+            exit 1
+          fi
       
       - name: Create Release
         id: create_release
