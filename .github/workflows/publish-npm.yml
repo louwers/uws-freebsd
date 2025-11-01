@@ -67,6 +67,9 @@ jobs:
           usesh: true
           prepare: |
             pkg install -y cmake llvm18
+            # Create symlinks for clang-18 and clang++-18
+            ln -sf /usr/local/bin/clang18 /usr/local/bin/clang-18
+            ln -sf /usr/local/bin/clang++18 /usr/local/bin/clang++-18
           run: |
             cd uWebSockets.js
             make
@@ -88,6 +91,7 @@ jobs:
           name: freebsd-binaries
           path: uWebSockets.js/dist/uws_freebsd_x64_*.node
           retention-days: 1
+          if-no-files-found: fail
 
       - name: Upload release files
         uses: actions/upload-artifact@v4
