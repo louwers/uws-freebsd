@@ -1,0 +1,7 @@
+# Build tools
+actionlint
+
+# Node.js
+node_modules/
+dist/
+*.node
