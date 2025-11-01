@@ -1,0 +1,40 @@
+--- build.c.orig	2025-11-01 10:54:42.088067746 +0000
++++ build.c	2025-11-01 10:56:24.169544001 +0000
+@@ -16,6 +16,10 @@
+ #define OS "darwin"
+ #define IS_MACOS
+ #endif
++#ifdef __FreeBSD__
++#define OS "freebsd"
++#define IS_FREEBSD
++#endif
+ 
+ const char *ARM = "arm";
+ const char *ARM64 = "arm64";
+@@ -103,6 +107,11 @@
+     run("cd uWebSockets/uSockets/boringssl && mkdir -p %s && cd %s && cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release .. && make crypto ssl", arch, arch);
+ #endif
+     
++#ifdef IS_FREEBSD
++    /* Build for x64 or arm/arm64 (depending on the host) */
++    run("cd uWebSockets/uSockets/boringssl && mkdir -p %s && cd %s && cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release .. && make crypto ssl", arch, arch);
++#endif
++    
+ #ifdef IS_WINDOWS
+     /* Build for x64 (the host) */
+     run("cd uWebSockets/uSockets/boringssl && mkdir -p x64 && cd x64 && cmake -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -GNinja .. && ninja crypto ssl");
+@@ -190,6 +199,14 @@
+           arch);
+ #endif
+ #endif
++#ifdef IS_FREEBSD
++    /* FreeBSD does not cross-compile but picks whatever arch the host is on */
++    build("clang18",
++          "clang++18",
++          "-static-libstdc++ -static-libgcc -s",
++          OS,
++          arch);
++#endif
+ 
+     copy_files();
+ }
