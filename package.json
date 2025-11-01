@@ -1,17 +1,12 @@
 {
   "name": "@louwers/bws.js",
-  "version": "0.0.1",
-  "description": "FreeBSD build of uWebSockets.js",
+  "version": "0.0.2",
+  "license": "Apache-2.0",
   "main": "uws.js",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/louwers/uws-freebsd.git"
-  },
-  "keywords": [
-    "websockets",
-    "freebsd",
-    "uWebSockets"
-  ],
-  "author": "louwers",
-  "license": "Apache-2.0"
+  "types": "./index.d.ts",
+  "exports": {
+    "import": "./ESM_wrapper.mjs",
+    "require": "./uws.js",
+    "types": "./index.d.ts"
+  }
 }

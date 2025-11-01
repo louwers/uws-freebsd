@@ -1,156 +1,196 @@
-name: Publish to GitHub npm Registry
+name: Publish npm Package with FreeBSD Build
 
 on:
   workflow_dispatch:
-    inputs:
-      release_name:
-        description: 'Release name to use for binary assets (e.g., v20.55.0). If not provided, uses the latest v*.*.* release.'
-        required: false
-        type: string
 
 jobs:
-  publish:
+  build-freebsd:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    outputs:
+      version: ${{ steps.get_release.outputs.version }}
+      version_no_v: ${{ steps.get_release.outputs.version_no_v }}
 
     steps:
-      - name: Checkout repository
+      - name: Checkout this repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: Setup Node.js
+      - name: Get latest uWebSockets.js release
+        id: get_release
+        run: |
+          LATEST_RELEASE=$(curl -s https://api.github.com/repos/uNetworking/uWebSockets.js/releases/latest | jq -r .tag_name)
+          VERSION_NO_V="${LATEST_RELEASE#v}"
+          echo "version=${LATEST_RELEASE}" >> "$GITHUB_OUTPUT"
+          echo "version_no_v=${VERSION_NO_V}" >> "$GITHUB_OUTPUT"
+          echo "Latest uWebSockets.js release: ${LATEST_RELEASE}"
+
+      - name: Download uWebSockets.js release
+        run: |
+          VERSION="${{ steps.get_release.outputs.version }}"
+          echo "Downloading uWebSockets.js ${VERSION}"
+          curl -L -o uwebsockets.zip "https://github.com/uNetworking/uWebSockets.js/archive/refs/tags/${VERSION}.zip"
+          unzip uwebsockets.zip
+          # The unzipped folder will be named uWebSockets.js-{VERSION without v}
+          VERSION_NO_V="${VERSION#v}"
+          mv "uWebSockets.js-${VERSION_NO_V}" uWebSockets.js-release
+
+      - name: Read source_commit
+        id: source_commit
+        run: |
+          SOURCE_COMMIT=$(cat uWebSockets.js-release/source_commit)
+          echo "commit=${SOURCE_COMMIT}" >> "$GITHUB_OUTPUT"
+          echo "Source commit: ${SOURCE_COMMIT}"
+
+      - name: Clone uWebSockets.js repository
+        run: |
+          git clone --depth 1 --recurse-submodules https://github.com/uNetworking/uWebSockets.js.git
+
+      - name: Checkout specific commit
+        run: |
+          cd uWebSockets.js
+          # Fetch the specific commit
+          git fetch --depth 1 origin ${{ steps.source_commit.outputs.commit }}
+          git checkout ${{ steps.source_commit.outputs.commit }}
+          # Update submodules for this commit
+          git submodule update --init --recursive --depth 1
+
+      - name: Prepare build.c for FreeBSD
+        run: |
+          cd uWebSockets.js
+          # Prepend FreeBSD defines to build.c to make it build as Linux
+          # This allows FreeBSD to use Linux build paths while producing freebsd-named binaries
+          { echo '#define OS "freebsd"'; echo '#define __linux 1'; cat build.c; } > build.c.tmp
+          mv build.c.tmp build.c
+
+      - name: Build in FreeBSD VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          prepare: |
+            pkg install -y cmake llvm18
+          run: |
+            cd uWebSockets.js
+            make
+
+      - name: List built FreeBSD files
+        run: |
+          cd uWebSockets.js
+          if [ -d "dist" ]; then
+            echo "FreeBSD binaries built:"
+            ls -lh dist/
+          else
+            echo "Error: dist directory not found"
+            exit 1
+          fi
+
+      - name: Upload FreeBSD artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: freebsd-binaries
+          path: uWebSockets.js/dist/uws_freebsd_x64_*.node
+          retention-days: 1
+
+      - name: Upload release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: |
+            uWebSockets.js-release/*.node
+            uWebSockets.js-release/ESM_wrapper.mjs
+            uWebSockets.js-release/index.d.ts
+            uWebSockets.js-release/LICENSE
+            uWebSockets.js-release/uws.js
+          retention-days: 1
+
+  publish-npm:
+    runs-on: ubuntu-latest
+    needs: build-freebsd
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Download FreeBSD artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: freebsd-binaries
+          path: artifacts/freebsd
+
+      - name: Download release files
+        uses: actions/download-artifact@v4
+        with:
+          name: release-files
+          path: artifacts/release
+
+      - name: Prepare npm package
+        run: |
+          mkdir -p npm-package
+          
+          # Copy all .node files from the downloaded release
+          echo "Copying .node files from release..."
+          cp artifacts/release/*.node npm-package/ 2>/dev/null || echo "No .node files found in release"
+          
+          # Copy FreeBSD .node files we just built
+          echo "Copying FreeBSD .node files..."
+          cp artifacts/freebsd/uws_freebsd_x64_*.node npm-package/
+          
+          # Copy required files from the release
+          echo "Copying required files from release..."
+          cp artifacts/release/ESM_wrapper.mjs npm-package/
+          cp artifacts/release/index.d.ts npm-package/
+          cp artifacts/release/LICENSE npm-package/
+          cp artifacts/release/uws.js npm-package/ || echo "Warning: uws.js not found"
+          
+          # Copy package.json from this repo
+          echo "Copying package.json from repo..."
+          cp package.json npm-package/
+          
+          echo "Package contents:"
+          ls -lh npm-package/
+
+      - name: Update package version
+        run: |
+          cd npm-package
+          VERSION_NO_V="${{ needs.build-freebsd.outputs.version_no_v }}"
+          # Update version in package.json
+          node -e "
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.version = '${VERSION_NO_V}';
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          echo "Updated package.json:"
+          cat package.json
+
+      - name: Setup Node.js for GitHub Packages
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@louwers'
-
-      - name: Read package version
-        id: package-version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Package version: $VERSION"
-
-      - name: Determine release to use
-        id: release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ -n "${{ inputs.release_name }}" ]; then
-            RELEASE_NAME="${{ inputs.release_name }}"
-            echo "Using provided release: $RELEASE_NAME"
-          else
-            # Get the latest release that matches v*.*.*
-            RELEASE_NAME=$(gh release list --limit 100 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease == false) | .tagName' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
-            if [ -z "$RELEASE_NAME" ]; then
-              echo "Error: No release matching v*.*.* pattern found!"
-              exit 1
-            fi
-            echo "Using latest release: $RELEASE_NAME"
-          fi
-
-          # Verify the release exists
-          if ! gh release view "$RELEASE_NAME" > /dev/null 2>&1; then
-            echo "Error: Release $RELEASE_NAME does not exist!"
-            exit 1
-          fi
-
-          echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
-          echo "Release $RELEASE_NAME found!"
-
-          # List all .node assets
-          echo "Binary assets (.node files):"
-          NODE_FILES=$(gh release view "$RELEASE_NAME" --json assets --jq '.assets[] | select(.name | endswith(".node")) | .name')
-
-          if [ -z "$NODE_FILES" ]; then
-            echo "Error: No .node files found in release $RELEASE_NAME"
-            exit 1
-          fi
-
-          echo "$NODE_FILES"
-          NODE_COUNT=$(echo "$NODE_FILES" | wc -l)
-          echo "Found $NODE_COUNT .node file(s)"
-
-      - name: Download binary assets from release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          RELEASE_NAME="${{ steps.release.outputs.release_name }}"
-          echo "Downloading binary assets from release $RELEASE_NAME..."
-
-          # Create dist directory for binaries
-          mkdir -p dist
-
-          # Download all .node files
-          gh release download "$RELEASE_NAME" --pattern "*.node" --dir dist
-
-          echo "Downloaded files:"
-          ls -lh dist/
-
-      - name: Prepare package for publishing
-        run: |
-          RELEASE_NAME="${{ steps.release.outputs.release_name }}"
-
-          # Copy source files from submodule
-          cp -r uWebSockets.js/src .
-
-          # Create a package structure
-          # The main entry point should be the uWebSockets.js wrapper
-          if [ -f "uWebSockets.js/src/uws.js" ]; then
-            cp uWebSockets.js/src/uws.js .
-          fi
-
-          # Update README.md to include the release link
-          # Add binary release information to the existing README
-          cat >> README.md << EOF
-
-          ## Binary Release
-
-          The binaries included in this package are from release [$RELEASE_NAME](https://github.com/louwers/uws-freebsd/releases/tag/$RELEASE_NAME).
-
-          ### Included binaries:
-          EOF
-
-          # List the actual downloaded binaries
-          for file in dist/*.node; do
-            if [ -f "$file" ]; then
-              basename=$(basename "$file")
-              echo "- \`$basename\`" >> README.md
-            fi
-          done
-
-          echo "Package contents:"
-          ls -la
 
       - name: Publish to GitHub Packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RELEASE_NAME="${{ steps.release.outputs.release_name }}"
+          cd npm-package
+          npm publish --access public
 
-          echo "Publishing package version ${{ steps.package-version.outputs.version }}"
-          echo "Using binaries from release: $RELEASE_NAME"
-
-          # Update package.json to include files for npm publish
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            pkg.files = ['dist/*.node', 'src/**/*', 'uws.js', 'README.md'];
-            pkg.description = 'FreeBSD build of uWebSockets.js (binaries from release $RELEASE_NAME)';
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
-          "
-
-          npm publish
-
-      - name: Summary
+      - name: Create GitHub release tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RELEASE_NAME="${{ steps.release.outputs.release_name }}"
-          echo "## Package Published Successfully! 🎉" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Package**: @louwers/bws.js" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: ${{ steps.package-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Binary Assets from**: [$RELEASE_NAME](https://github.com/louwers/uws-freebsd/releases/tag/$RELEASE_NAME)" >> $GITHUB_STEP_SUMMARY
+          VERSION="${{ needs.build-freebsd.outputs.version }}"
+          
+          # Create a tag for this release
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${VERSION}" -m "Release ${VERSION} with FreeBSD support"
+          git push origin "${VERSION}" || echo "Tag already exists"
+          
+          # Create GitHub release
+          gh release create "${VERSION}" \
+            --repo ${{ github.repository }} \
+            --title "bws.js ${VERSION}" \
+            --notes "Binary builds of uWebSockets.js ${VERSION} with FreeBSD support, published to npm as @louwers/bws.js" \
+            --draft false \
+            --prerelease false || echo "Release already exists"
