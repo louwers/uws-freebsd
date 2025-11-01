@@ -1,15 +1,30 @@
+# Cirrus CI Configuration for uws-freebsd
+#
+# This configuration builds uWebSockets.js on FreeBSD natively.
+# 
+# Setup Instructions:
+# 1. Configure GITHUB_TOKEN in Cirrus CI repository settings as an encrypted variable
+#    See: https://cirrus-ci.org/guide/writing-tasks/#encrypted-variables
+# 2. Set up a nightly cron schedule in Cirrus CI settings:
+#    Name: nightly
+#    Cron Expression: 0 0 * * *  (runs daily at midnight UTC)
+#    Branch: main
+
 task:
   name: Build and Release uWebSockets.js on FreeBSD
   
-  # Run on FreeBSD directly
+  # Run on FreeBSD directly (not in a VM)
   freebsd_instance:
     image_family: freebsd-14-0
   
-  # Only run on main branch, scheduled runs, or manual triggers
+  # Only run on main branch for scheduled runs or manual triggers
   only_if: $CIRRUS_BRANCH == "main" || $CIRRUS_CRON == "nightly"
   
   env:
-    GITHUB_TOKEN: ENCRYPTED[!OUTPUT ONLY]
+    # GitHub token for creating releases
+    # Configure this in Cirrus CI repository settings as an encrypted variable
+    # For instructions, see: https://cirrus-ci.org/guide/writing-tasks/#encrypted-variables
+    GITHUB_TOKEN: ENCRYPTED[!TO_BE_CONFIGURED_IN_CIRRUS_CI_SETTINGS!]
   
   # Check version and determine if build is needed
   check_version_script: |
