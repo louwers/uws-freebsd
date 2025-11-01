@@ -10,7 +10,7 @@ npm install @louwers/bws.js
 
 ## About
 
-This repository provides automated builds of uWebSockets.js for multiple platforms including FreeBSD and Linux. The native `.node` binaries support multiple Node.js versions.
+This repository provides automated builds of uWebSockets.js for multiple platforms including FreeBSD, Linux, and macOS. The native `.node` binaries support multiple Node.js versions.
 
 uWebSockets.js is one of the most performant WebSocket and HTTP server implementations available for Node.js, built on top of the C++ library µWebSockets.
 
@@ -37,6 +37,7 @@ For more examples and documentation, see the [uWebSockets.js repository](https:/
 This repository builds binaries for:
 - **FreeBSD x64** - Built in a FreeBSD VM using Clang 18
 - **Linux x64** - Built natively on Ubuntu using Clang
+- **macOS** - Built natively on macOS using Clang
 
 All platforms support multiple Node.js versions (v20, v22, v24, v25).
 
@@ -54,11 +55,12 @@ The workflow can be triggered in two ways:
 
 ### Build Process
 
-The workflow consists of three jobs:
+The workflow consists of four jobs:
 
 1. **ensure-release**: Creates or verifies the release exists (workflow_dispatch only)
 2. **build-freebsd**: Builds FreeBSD binaries in a VM and uploads to the release
 3. **build-linux**: Builds Linux binaries natively and uploads to the release
+4. **build-macos**: Builds macOS binaries natively and uploads to the release
 
 ### Local Building
 
@@ -76,7 +78,7 @@ patch -p0 < freebsd-build.patch
 cd uWebSockets.js
 make
 
-# For Linux
+# For Linux/macOS
 cd uWebSockets.js
 make
 ```

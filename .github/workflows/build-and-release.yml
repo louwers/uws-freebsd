@@ -35,7 +35,7 @@ jobs:
             gh release create "$RELEASE_TAG" \
               --repo ${{ github.repository }} \
               --title "uWebSockets.js $RELEASE_TAG" \
-              --notes "Binary builds of uWebSockets.js $RELEASE_TAG for FreeBSD and Linux" \
+              --notes "Binary builds of uWebSockets.js $RELEASE_TAG for FreeBSD, Linux, and macOS" \
               --draft false \
               --prerelease false
           fi
@@ -123,11 +123,6 @@ jobs:
           git checkout ${{ inputs.uwebsockets_version }}
           git submodule update --init --recursive
 
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake clang
-
       - name: Build for Linux
         run: |
           cd uWebSockets.js
@@ -151,6 +146,58 @@ jobs:
           RELEASE_TAG="${{ needs.ensure-release.outputs.release_tag }}"
           cd uWebSockets.js/dist
           for file in uws_linux_x64_*.node; do
+            if [ -f "$file" ]; then
+              echo "Uploading $file to release $RELEASE_TAG"
+              gh release upload "$RELEASE_TAG" "$file" \
+                --repo ${{ github.repository }} \
+                --clobber
+            fi
+          done
+
+  build-macos:
+    runs-on: macos-latest
+    needs: ensure-release
+    if: always() && (github.event_name == 'pull_request' || needs.ensure-release.result == 'success')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Checkout uWebSockets.js submodule at specific version
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          cd uWebSockets.js
+          git fetch --all --tags
+          git checkout ${{ inputs.uwebsockets_version }}
+          git submodule update --init --recursive
+
+      - name: Build for macOS
+        run: |
+          cd uWebSockets.js
+          make
+
+      - name: List built files
+        run: |
+          cd uWebSockets.js
+          if [ -d "dist" ]; then
+            ls -lh dist/
+          else
+            echo "Warning: dist directory not found"
+            exit 1
+          fi
+
+      - name: Upload macOS binaries to release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_TAG="${{ needs.ensure-release.outputs.release_tag }}"
+          cd uWebSockets.js/dist
+          for file in uws_darwin_*.node; do
             if [ -f "$file" ]; then
               echo "Uploading $file to release $RELEASE_TAG"
               gh release upload "$RELEASE_TAG" "$file" \
