@@ -1,0 +1,127 @@
+task:
+  name: Build and Release uWebSockets.js on FreeBSD
+  
+  # Run on FreeBSD directly
+  freebsd_instance:
+    image_family: freebsd-14-0
+  
+  # Only run on main branch, scheduled runs, or manual triggers
+  only_if: $CIRRUS_BRANCH == "main" || $CIRRUS_CRON == "nightly"
+  
+  env:
+    GITHUB_TOKEN: ENCRYPTED[!OUTPUT ONLY]
+  
+  # Check version and determine if build is needed
+  check_version_script: |
+    pkg install -y curl jq
+    
+    # Fetch the latest release tag from uNetworking/uWebSockets.js
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/uNetworking/uWebSockets.js/releases/latest | jq -r .tag_name)
+    echo "Latest version: $LATEST_VERSION"
+    echo "LATEST_VERSION=$LATEST_VERSION" >> $CIRRUS_ENV
+    
+    # Download the release archive to get source_commit
+    curl -L "https://github.com/uNetworking/uWebSockets.js/archive/refs/tags/$LATEST_VERSION.zip" -o uws.zip
+    unzip -q uws.zip
+    
+    # Find and read source_commit file
+    EXTRACTED_DIR="uWebSockets.js-${LATEST_VERSION#v}"
+    if [ -f "$EXTRACTED_DIR/source_commit" ]; then
+      SOURCE_COMMIT=$(cat "$EXTRACTED_DIR/source_commit")
+      echo "Source commit: $SOURCE_COMMIT"
+      echo "SOURCE_COMMIT=$SOURCE_COMMIT" >> $CIRRUS_ENV
+    else
+      echo "Warning: source_commit file not found"
+      echo "SOURCE_COMMIT=" >> $CIRRUS_ENV
+    fi
+    
+    # Check if a release with this version already exists
+    EXISTING_RELEASE=$(curl -s "https://api.github.com/repos/$CIRRUS_REPO_FULL_NAME/releases/tags/$LATEST_VERSION" | jq -r .id)
+    if [ "$EXISTING_RELEASE" != "null" ] && [ -n "$EXISTING_RELEASE" ]; then
+      echo "Release $LATEST_VERSION already exists, skipping build"
+      echo "SHOULD_BUILD=false" >> $CIRRUS_ENV
+      exit 0
+    else
+      echo "Release $LATEST_VERSION does not exist, proceeding with build"
+      echo "SHOULD_BUILD=true" >> $CIRRUS_ENV
+    fi
+  
+  # Clone and checkout uWebSockets.js
+  clone_uws_script: |
+    if [ "$SHOULD_BUILD" != "true" ]; then
+      echo "Skipping clone as build is not needed"
+      exit 0
+    fi
+    
+    # Clone uWebSockets.js repository with submodules
+    git clone --recursive https://github.com/uNetworking/uWebSockets.js.git
+    cd uWebSockets.js
+    
+    # Checkout the specific commit from source_commit
+    if [ -n "$SOURCE_COMMIT" ]; then
+      git checkout $SOURCE_COMMIT
+      git submodule update --init --recursive
+    else
+      # Fallback to the tag if source_commit is not available
+      git checkout $LATEST_VERSION
+      git submodule update --init --recursive
+    fi
+  
+  # Apply FreeBSD patches and build
+  build_script: |
+    if [ "$SHOULD_BUILD" != "true" ]; then
+      echo "Skipping build as it is not needed"
+      exit 0
+    fi
+    
+    cd uWebSockets.js
+    
+    # Apply FreeBSD patch
+    echo "Applying FreeBSD patches to build.c"
+    if [ ! -f build.c ]; then
+      echo "Error: build.c file not found"
+      exit 1
+    fi
+    
+    # Add __linux define and modify OS string
+    echo '#define __linux 1' > build.c.temp
+    cat build.c >> build.c.temp
+    mv build.c.temp build.c
+    sed -i.bak 's|#define OS "linux"|#define OS "freebsd"|' build.c && rm -f build.c.bak
+    sed -i.bak 's/clang-18/clang18/' build.c && rm -f build.c.bak
+    sed -i.bak 's/clang++-18/clang++18/' build.c && rm -f build.c.bak
+    
+    # Install dependencies
+    pkg install -y cmake llvm18 libuv
+    
+    # Build
+    make
+    
+    # List built files
+    if [ -d "dist" ]; then
+      ls -lh dist/
+    else
+      echo "Error: dist directory not found"
+      exit 1
+    fi
+  
+  # Create GitHub release
+  release_script: |
+    if [ "$SHOULD_BUILD" != "true" ]; then
+      echo "Skipping release as build was not performed"
+      exit 0
+    fi
+    
+    cd uWebSockets.js
+    
+    # Install GitHub CLI
+    pkg install -y gh
+    
+    # Create release with built artifacts
+    gh release create "$LATEST_VERSION" \
+      --repo "$CIRRUS_REPO_FULL_NAME" \
+      --title "$LATEST_VERSION" \
+      --notes "FreeBSD build of uWebSockets.js $LATEST_VERSION
+
+Source commit: https://github.com/uNetworking/uWebSockets.js/commit/$SOURCE_COMMIT" \
+      dist/uws_freebsd_x64_*.node
