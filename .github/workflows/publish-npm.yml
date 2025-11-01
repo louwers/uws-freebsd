@@ -64,11 +64,18 @@ jobs:
 
           ASSETS=$(gh release view "$RELEASE_NAME" --json assets --jq '.assets[].name')
 
+          MISSING_FILES=()
           for file in "${REQUIRED_FILES[@]}"; do
             if ! echo "$ASSETS" | grep -q "^$file$"; then
-              echo "Warning: Required file $file not found in release $RELEASE_NAME"
+              echo "Error: Required file $file not found in release $RELEASE_NAME"
+              MISSING_FILES+=("$file")
             fi
           done
+
+          if [ ${#MISSING_FILES[@]} -ne 0 ]; then
+            echo "Missing required files: ${MISSING_FILES[@]}"
+            exit 1
+          fi
 
       - name: Download binary assets from release
         env:

@@ -2,7 +2,7 @@
   "name": "@louwers/bWebSockets.js",
   "version": "0.0.1",
   "description": "FreeBSD build of uWebSockets.js",
-  "main": "uWebSockets.js",
+  "main": "uws.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/louwers/uws-freebsd.git"
