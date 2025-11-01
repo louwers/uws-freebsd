@@ -1,39 +1,45 @@
-# uws-freebsd
+# @louwers/bWebSockets.js
 
-This repository contains a GitHub Actions workflow for building and releasing [uWebSockets.js](https://github.com/uNetworking/uWebSockets.js) on FreeBSD.
+FreeBSD build of [uWebSockets.js](https://github.com/uNetworking/uWebSockets.js) - a highly scalable WebSocket & HTTP server for Node.js.
 
-## Workflow
+## Installation
 
-The workflow is located at `.github/workflows/build-and-release.yml` and performs the following steps:
+```bash
+npm install @louwers/bWebSockets.js
+```
 
-1. **Checkout**: Clones this repository and the uWebSockets.js repository with all submodules
-2. **Apply Patch**: Applies FreeBSD-specific patch to `build.c` to add FreeBSD support
-3. **Build in FreeBSD VM**: Uses `vmactions/freebsd-vm` to build inside a FreeBSD virtual machine
-4. **Install Dependencies**: Installs CMake and LLVM 18 (Clang 18) in the FreeBSD VM
-5. **Build**: Runs `make` to build the project, which produces `.node` binary files for different Node.js versions
-6. **Release**: Creates a GitHub release with the built FreeBSD x64 `.node` files (only on tag pushes)
+## About
 
-## FreeBSD Patch
+This package provides FreeBSD-compatible binary builds of uWebSockets.js. The native `.node` binaries are built specifically for FreeBSD and support multiple Node.js versions.
 
-The `freebsd-build.patch` file adds FreeBSD support to uWebSockets.js by:
-- Adding `__FreeBSD__` detection and defining `OS` as "freebsd"
-- Adding FreeBSD-specific build configurations for BoringSSL and lsquic
-- Using `clang18` and `clang++18` compilers available in FreeBSD
+uWebSockets.js is one of the most performant WebSocket and HTTP server implementations available for Node.js, built on top of the C++ library µWebSockets.
 
-## Triggering the Workflow
+## Usage
 
-The workflow can be triggered in three ways:
+```javascript
+const uWS = require('@louwers/bWebSockets.js');
 
-1. **Tag Push**: Automatically runs when a tag matching the pattern `v*` is pushed (e.g., `v1.0.0`) - creates a release
-2. **Pull Request**: Runs on pull requests for validation (build only, no release)
-3. **Manual Dispatch**: Can be manually triggered from the GitHub Actions UI
+const app = uWS.App().get('/*', (res, req) => {
+  res.end('Hello World!');
+}).listen(9001, (token) => {
+  if (token) {
+    console.log('Listening to port 9001');
+  } else {
+    console.log('Failed to listen to port 9001');
+  }
+});
+```
 
-## Built Artifacts
+For more examples and documentation, see the [uWebSockets.js repository](https://github.com/uNetworking/uWebSockets.js).
 
-The workflow builds and releases the following FreeBSD files:
-- `uws_freebsd_x64_115.node` (Node.js v20)
-- `uws_freebsd_x64_127.node` (Node.js v22)
-- `uws_freebsd_x64_137.node` (Node.js v24)
-- `uws_freebsd_x64_141.node` (Node.js v25)
+## FreeBSD Support
 
-These files are included in the GitHub release for easy distribution.
+This package is specifically built for FreeBSD systems. The binaries are compiled using the FreeBSD build workflow maintained at [louwers/uws-freebsd](https://github.com/louwers/uws-freebsd).
+
+## Building
+
+If you need to build the binaries yourself or want to learn more about the build process, visit the [uws-freebsd repository](https://github.com/louwers/uws-freebsd).
+
+## License
+
+Apache-2.0 (same as uWebSockets.js)
