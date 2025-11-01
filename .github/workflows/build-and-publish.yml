@@ -131,27 +131,44 @@ jobs:
             sed -i.bak 's/clang++-18/clang++18/' build.c && rm -f build.c.bak
             
             # Install dependencies and build
-            # In FreeBSD, pkg should auto-bootstrap when first run
-            # Just try to use pkg directly - it will bootstrap automatically if needed
-            # Add /usr/local/sbin to PATH if pkg is there
+            # Bootstrap pkg properly - determine FreeBSD version and use correct method
             export PATH="/usr/local/sbin:/usr/sbin:$PATH"
             
-            # Try to use pkg - it will bootstrap automatically
-            if command -v pkg >/dev/null 2>&1; then
-              pkg install -y cmake llvm18 libuv
-            elif [ -x /usr/sbin/pkg ]; then
-              /usr/sbin/pkg bootstrap -y
-              /usr/sbin/pkg install -y cmake llvm18 libuv
-            elif [ -x /usr/local/sbin/pkg ]; then
-              /usr/local/sbin/pkg bootstrap -y
-              /usr/local/sbin/pkg install -y cmake llvm18 libuv
-            else
-              # Last resort: try running pkg which should auto-bootstrap
-              ASSUME_ALWAYS_YES=yes pkg install -y cmake llvm18 libuv || {
-                echo "ERROR: Could not find or bootstrap pkg" >&2
+            if ! command -v pkg >/dev/null 2>&1; then
+              # Get FreeBSD version
+              FREEBSD_VERSION=$(freebsd-version | cut -d- -f1 | cut -d. -f1)
+              ARCH=$(uname -m)
+              
+              # Download and install pkg bootstrap
+              # Use correct URL format for FreeBSD 14
+              if [ "$ARCH" = "amd64" ]; then
+                PKG_URL="https://pkg.freebsd.org/FreeBSD:${FREEBSD_VERSION}:amd64/latest/pkg.txz"
+              else
+                PKG_URL="https://pkg.freebsd.org/FreeBSD:${FREEBSD_VERSION}:${ARCH}/latest/pkg.txz"
+              fi
+              
+              # Download pkg.txz and install it
+              mkdir -p /tmp/pkg-bootstrap
+              cd /tmp/pkg-bootstrap
+              if command -v wget >/dev/null 2>&1; then
+                wget "$PKG_URL"
+              elif command -v curl >/dev/null 2>&1; then
+                curl -o pkg.txz "$PKG_URL"
+              elif command -v fetch >/dev/null 2>&1; then
+                fetch -o pkg.txz "$PKG_URL"
+              else
+                echo "ERROR: No download tool available" >&2
                 exit 1
-              }
+              fi
+              
+              # Extract and install pkg
+              tar -xJf pkg.txz -C / || tar -xzf pkg.txz -C /
+              /usr/local/sbin/pkg bootstrap -y
+              cd -
             fi
+            
+            # Now install dependencies
+            pkg install -y cmake llvm18 libuv
             make
       
       - name: List built files
