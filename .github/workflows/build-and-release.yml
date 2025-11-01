@@ -53,11 +53,10 @@ jobs:
 
       - name: Checkout uWebSockets.js repository
         run: |
-          git clone --recursive https://github.com/uNetworking/uWebSockets.js.git
-          cd uWebSockets.js
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            git checkout ${{ inputs.uwebsockets_version }}
-            git submodule update --init --recursive
+            git clone --recursive --branch ${{ inputs.uwebsockets_version }} https://github.com/uNetworking/uWebSockets.js.git
+          else
+            git clone --recursive https://github.com/uNetworking/uWebSockets.js.git --depth 1
           fi
 
       - name: Prepare build.c for FreeBSD
@@ -117,11 +116,10 @@ jobs:
 
       - name: Checkout uWebSockets.js repository
         run: |
-          git clone --recursive https://github.com/uNetworking/uWebSockets.js.git
-          cd uWebSockets.js
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            git checkout ${{ inputs.uwebsockets_version }}
-            git submodule update --init --recursive
+            git clone --recursive --branch ${{ inputs.uwebsockets_version }} https://github.com/uNetworking/uWebSockets.js.git
+          else
+            git clone --recursive https://github.com/uNetworking/uWebSockets.js.git --depth 1
           fi
 
       - name: Build for Linux
@@ -168,15 +166,15 @@ jobs:
 
       - name: Checkout uWebSockets.js repository
         run: |
-          git clone --recursive https://github.com/uNetworking/uWebSockets.js.git
-          cd uWebSockets.js
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            git checkout ${{ inputs.uwebsockets_version }}
-            git submodule update --init --recursive
+            git clone --recursive --branch ${{ inputs.uwebsockets_version }} https://github.com/uNetworking/uWebSockets.js.git
+          else
+            git clone --recursive https://github.com/uNetworking/uWebSockets.js.git --depth 1
           fi
 
       - name: Build for macOS
         run: |
+          ls
           cd uWebSockets.js
           make
 
