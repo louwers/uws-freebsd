@@ -44,7 +44,9 @@ jobs:
       - name: Clone uWebSockets.js repository
         uses: actions/checkout@v4
         with:
+          repository: uNetworking/uWebSockets.js
           submodules: recursive
+          path: uWebSockets.js
           ref: ${{ steps.source_commit.outputs.commit }}
 
       - name: Prepare build.c for FreeBSD
