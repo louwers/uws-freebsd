@@ -1,0 +1,156 @@
+name: Publish to GitHub npm Registry
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_name:
+        description: 'Release name to use for binary assets (e.g., v20.55.0). If not provided, uses the latest v*.*.* release.'
+        required: false
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@louwers'
+
+      - name: Read package version
+        id: package-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Package version: $VERSION"
+
+      - name: Determine release to use
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.release_name }}" ]; then
+            RELEASE_NAME="${{ inputs.release_name }}"
+            echo "Using provided release: $RELEASE_NAME"
+          else
+            # Get the latest release that matches v*.*.*
+            RELEASE_NAME=$(gh release list --limit 100 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease == false) | .tagName' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
+            if [ -z "$RELEASE_NAME" ]; then
+              echo "Error: No release matching v*.*.* pattern found!"
+              exit 1
+            fi
+            echo "Using latest release: $RELEASE_NAME"
+          fi
+
+          # Verify the release exists
+          if ! gh release view "$RELEASE_NAME" > /dev/null 2>&1; then
+            echo "Error: Release $RELEASE_NAME does not exist!"
+            exit 1
+          fi
+
+          echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+          echo "Release $RELEASE_NAME found!"
+
+          # List all .node assets
+          echo "Binary assets (.node files):"
+          NODE_FILES=$(gh release view "$RELEASE_NAME" --json assets --jq '.assets[] | select(.name | endswith(".node")) | .name')
+
+          if [ -z "$NODE_FILES" ]; then
+            echo "Error: No .node files found in release $RELEASE_NAME"
+            exit 1
+          fi
+
+          echo "$NODE_FILES"
+          NODE_COUNT=$(echo "$NODE_FILES" | wc -l)
+          echo "Found $NODE_COUNT .node file(s)"
+
+      - name: Download binary assets from release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_NAME="${{ steps.release.outputs.release_name }}"
+          echo "Downloading binary assets from release $RELEASE_NAME..."
+
+          # Create dist directory for binaries
+          mkdir -p dist
+
+          # Download all .node files
+          gh release download "$RELEASE_NAME" --pattern "*.node" --dir dist
+
+          echo "Downloaded files:"
+          ls -lh dist/
+
+      - name: Prepare package for publishing
+        run: |
+          RELEASE_NAME="${{ steps.release.outputs.release_name }}"
+
+          # Copy source files from submodule
+          cp -r uWebSockets.js/src .
+
+          # Create a package structure
+          # The main entry point should be the uWebSockets.js wrapper
+          if [ -f "uWebSockets.js/src/uws.js" ]; then
+            cp uWebSockets.js/src/uws.js .
+          fi
+
+          # Update README.md to include the release link
+          # Add binary release information to the existing README
+          cat >> README.md << EOF
+
+          ## Binary Release
+
+          The binaries included in this package are from release [$RELEASE_NAME](https://github.com/louwers/uws-freebsd/releases/tag/$RELEASE_NAME).
+
+          ### Included binaries:
+          EOF
+
+          # List the actual downloaded binaries
+          for file in dist/*.node; do
+            if [ -f "$file" ]; then
+              basename=$(basename "$file")
+              echo "- \`$basename\`" >> README.md
+            fi
+          done
+
+          echo "Package contents:"
+          ls -la
+
+      - name: Publish to GitHub Packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_NAME="${{ steps.release.outputs.release_name }}"
+
+          echo "Publishing package version ${{ steps.package-version.outputs.version }}"
+          echo "Using binaries from release: $RELEASE_NAME"
+
+          # Update package.json to include files for npm publish
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.files = ['dist/*.node', 'src/**/*', 'uws.js', 'README.md'];
+            pkg.description = 'FreeBSD build of uWebSockets.js (binaries from release $RELEASE_NAME)';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
+
+          npm publish
+
+      - name: Summary
+        run: |
+          RELEASE_NAME="${{ steps.release.outputs.release_name }}"
+          echo "## Package Published Successfully! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package**: @louwers/bWebSockets.js" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.package-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Binary Assets from**: [$RELEASE_NAME](https://github.com/louwers/uws-freebsd/releases/tag/$RELEASE_NAME)" >> $GITHUB_STEP_SUMMARY
