@@ -27,7 +27,7 @@ jobs:
       - name: Apply FreeBSD patch
         run: |
           cd uWebSockets.js
-          patch -p1 < ../freebsd-build.patch
+          patch -p0 < ../freebsd-build.patch
       
       - name: Build in FreeBSD VM
         uses: vmactions/freebsd-vm@v1
