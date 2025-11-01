@@ -94,18 +94,25 @@ jobs:
           disk-size: 4G
           run-in-vm: |
             # Apply FreeBSD patch
-            cd uWebSockets.js || { echo "Error: uWebSockets.js directory not found" && exit 1; }
+            echo "Current directory: $(pwd)"
+            echo "Listing files:"
+            ls -la
+            cd uWebSockets.js || { echo "Error: uWebSockets.js directory not found in $(pwd)" && ls -la && exit 1; }
+            echo "In uWebSockets.js directory: $(pwd)"
+            echo "Files in uWebSockets.js:"
+            ls -la
             if [ ! -f build.c ]; then
               echo "Error: build.c file not found in $(pwd)"
-              ls -la
+              echo "Searching for build.c:"
+              find . -name "build.c" -type f 2>/dev/null || echo "build.c not found anywhere"
               exit 1
             fi
             echo '#define __linux 1' > build.c.temp
-            cat build.c >> build.c.temp
+            cat build.c >> build.c.temp || { echo "Warning: Could not read build.c, using new content only"; }
             mv build.c.temp build.c
-            sed -i.bak 's|#define OS "linux"|#define OS "freebsd"|' build.c && rm build.c.bak
-            sed -i.bak 's/clang-18/clang18/' build.c && rm build.c.bak
-            sed -i.bak 's/clang++-18/clang++18/' build.c && rm build.c.bak
+            sed -i.bak 's|#define OS "linux"|#define OS "freebsd"|' build.c && rm -f build.c.bak
+            sed -i.bak 's/clang-18/clang18/' build.c && rm -f build.c.bak
+            sed -i.bak 's/clang++-18/clang++18/' build.c && rm -f build.c.bak
             
             # Install dependencies and build
             sudo pkg install -y cmake llvm18 libuv
