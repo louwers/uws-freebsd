@@ -14,46 +14,46 @@ jobs:
     permissions:
       contents: read
       packages: write
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           registry-url: 'https://npm.pkg.github.com'
           scope: '@louwers'
-      
+
       - name: Read package version
         id: package-version
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Package version: $VERSION"
-      
+
       - name: Check if release exists
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RELEASE_NAME="${{ inputs.release_name }}"
           echo "Checking if release $RELEASE_NAME exists..."
-          
+
           # Use GitHub CLI to check if the release exists
           if ! gh release view "$RELEASE_NAME" > /dev/null 2>&1; then
             echo "Error: Release $RELEASE_NAME does not exist!"
             exit 1
           fi
-          
+
           echo "Release $RELEASE_NAME found!"
-          
+
           # List assets to verify binary files exist
           echo "Release assets:"
           gh release view "$RELEASE_NAME" --json assets --jq '.assets[].name'
-          
+
           # Check for required binary files
           REQUIRED_FILES=(
             "uws_freebsd_x64_115.node"
@@ -61,85 +61,85 @@ jobs:
             "uws_freebsd_x64_137.node"
             "uws_freebsd_x64_141.node"
           )
-          
+
           ASSETS=$(gh release view "$RELEASE_NAME" --json assets --jq '.assets[].name')
-          
+
           for file in "${REQUIRED_FILES[@]}"; do
             if ! echo "$ASSETS" | grep -q "^$file$"; then
               echo "Warning: Required file $file not found in release $RELEASE_NAME"
             fi
           done
-      
+
       - name: Download binary assets from release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RELEASE_NAME="${{ inputs.release_name }}"
           echo "Downloading binary assets from release $RELEASE_NAME..."
-          
+
           # Create dist directory for binaries
           mkdir -p dist
-          
+
           # Download each binary asset
           gh release download "$RELEASE_NAME" --pattern "uws_freebsd_x64_*.node" --dir dist
-          
+
           echo "Downloaded files:"
           ls -lh dist/
-      
+
       - name: Prepare package for publishing
         run: |
           RELEASE_NAME="${{ inputs.release_name }}"
-          
+
           # Copy source files from submodule
           cp -r uWebSockets.js/src .
-          
+
           # Create a package structure
           # The main entry point should be the uWebSockets.js wrapper
           if [ -f "uWebSockets.js/src/uws.js" ]; then
             cp uWebSockets.js/src/uws.js .
           fi
-          
+
           # Create a README for the npm package
           cat > NPM_README.md << EOF
           # @louwers/bWebSockets.js
-          
+
           FreeBSD build of [uWebSockets.js](https://github.com/uNetworking/uWebSockets.js)
-          
+
           ## Binary Assets
-          
+
           This package includes FreeBSD binary builds for multiple Node.js versions.
           The binaries are sourced from release [$RELEASE_NAME](https://github.com/louwers/uws-freebsd/releases/tag/$RELEASE_NAME).
-          
+
           ### Available binaries:
           - \`uws_freebsd_x64_115.node\` (Node.js v20)
           - \`uws_freebsd_x64_127.node\` (Node.js v22)
           - \`uws_freebsd_x64_137.node\` (Node.js v24)
           - \`uws_freebsd_x64_141.node\` (Node.js v25)
-          
+
           ## Source
-          
+
           Source files are from the [uWebSockets.js](https://github.com/uNetworking/uWebSockets.js) repository.
-          
+
           ## Building
-          
+
           For building instructions, see the [uws-freebsd](https://github.com/louwers/uws-freebsd) repository.
           EOF
-          
+
           # Use the npm readme as the package README
           mv NPM_README.md README.md
-          
+
           echo "Package contents:"
           ls -la
-      
+
       - name: Publish to GitHub Packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RELEASE_NAME="${{ inputs.release_name }}"
-          
+
           echo "Publishing package version ${{ steps.package-version.outputs.version }}"
           echo "Using binaries from release: $RELEASE_NAME"
-          
+
           # Update package.json to include files for npm publish
           node -e "
             const fs = require('fs');
@@ -148,9 +148,9 @@ jobs:
             pkg.description = 'FreeBSD build of uWebSockets.js (binaries from release $RELEASE_NAME)';
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
           "
-          
+
           npm publish
-      
+
       - name: Summary
         run: |
           echo "## Package Published Successfully! 🎉" >> $GITHUB_STEP_SUMMARY
