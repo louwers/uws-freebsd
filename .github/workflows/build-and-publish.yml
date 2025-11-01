@@ -28,7 +28,7 @@ jobs:
         run: |
           cd uWebSockets.js
           echo '#define __linux 1' > build.c.temp
-          cat build.c > build.c.temp
+          cat build.c >> build.c.temp
           mv build.c.temp build.c
           sed -i 's/#define OS "linux"/#define OS "freebsd"/' build.c
           sed -i 's/clang-18/clang18/' build.c
