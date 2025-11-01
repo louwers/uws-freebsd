@@ -131,8 +131,23 @@ jobs:
             sed -i.bak 's/clang++-18/clang++18/' build.c && rm -f build.c.bak
             
             # Install dependencies and build
-            # Bootstrap pkg (safe to run even if already bootstrapped)
-            ASSUME_ALWAYS_YES=yes pkg bootstrap -y || true
+            # Bootstrap pkg - FreeBSD might need explicit bootstrap
+            # Try to find and use pkg-static for bootstrapping
+            if ! command -v pkg >/dev/null 2>&1; then
+              # Try different locations for pkg-static (bootstrap script)
+              if [ -x /usr/sbin/pkg ]; then
+                /usr/sbin/pkg bootstrap -y
+              elif [ -x /usr/local/sbin/pkg ]; then
+                /usr/local/sbin/pkg bootstrap -y
+              elif [ -f /usr/sbin/pkg-static ]; then
+                /usr/sbin/pkg-static bootstrap -y
+              elif [ -f /usr/local/sbin/pkg-static ]; then
+                /usr/local/sbin/pkg-static bootstrap -y
+              else
+                # Download and run bootstrap script
+                ASSUME_ALWAYS_YES=yes fetch -o - https://pkg.freebsd.org/FreeBSD:14:amd64/latest/bootstrap.tar.gz | tar -xzf - -C / && /usr/local/sbin/pkg bootstrap -y
+              fi
+            fi
             pkg install -y cmake llvm18 libuv
             make
       
