@@ -92,7 +92,7 @@ jobs:
         uses: acj/freebsd-firecracker-action@v0.6.0
         with:
           disk-size: 4G
-          run-in-vm: |
+          run: |
             # Apply FreeBSD patch
             cd uWebSockets.js || { echo "Error: uWebSockets.js directory not found" && exit 1; }
             if [ ! -f build.c ]; then
