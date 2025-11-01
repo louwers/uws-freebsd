@@ -93,7 +93,7 @@ jobs:
         uses: acj/freebsd-firecracker-action@v0.6.0
         with:
           disk-size: 4G
-          run: |
+          run-in-vm: |
             # Apply FreeBSD patch
             cd uWebSockets.js
             echo '#define __linux 1' > build.c.temp
