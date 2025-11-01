@@ -73,9 +73,9 @@ git checkout <version-tag>  # e.g., v20.55.0
 git submodule update --init --recursive
 
 # For FreeBSD
-cd ..
-patch -p0 < freebsd-build.patch
 cd uWebSockets.js
+# Prepend FreeBSD defines to build.c
+{ echo '#define OS "freebsd"'; echo '#define __linux 1'; cat build.c; } > build.c.tmp && mv build.c.tmp build.c
 make
 
 # For Linux/macOS

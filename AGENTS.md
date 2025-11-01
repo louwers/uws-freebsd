@@ -7,18 +7,17 @@ This repository contains a GitHub Actions workflow for building and releasing [u
 The workflow is located at `.github/workflows/build-and-release.yml` and performs the following steps:
 
 1. **Checkout**: Clones this repository and the uWebSockets.js repository with all submodules
-2. **Apply Patch**: Applies FreeBSD-specific patch to `build.c` to add FreeBSD support
+2. **Prepare build.c**: Prepends FreeBSD-specific defines to `build.c` to make it build as Linux
 3. **Build in FreeBSD VM**: Uses `vmactions/freebsd-vm` to build inside a FreeBSD virtual machine
 4. **Install Dependencies**: Installs CMake and LLVM 18 (Clang 18) in the FreeBSD VM
 5. **Build**: Runs `make` to build the project, which produces `.node` binary files for different Node.js versions
 6. **Release**: Creates a GitHub release with the built FreeBSD x64 `.node` files (only on tag pushes)
 
-## FreeBSD Patch
+## FreeBSD Build Configuration
 
-The `freebsd-build.patch` file adds FreeBSD support to uWebSockets.js by:
-- Adding `__FreeBSD__` detection and defining `OS` as "freebsd"
-- Adding FreeBSD-specific build configurations for BoringSSL and lsquic
-- Using `clang18` and `clang++18` compilers available in FreeBSD
+The FreeBSD build prepends two defines to `build.c`:
+- `#define OS "freebsd"` - Sets the OS name for the output binaries
+- `#define __linux 1` - Makes the build system use Linux build paths, which work on FreeBSD
 
 ## Triggering the Workflow
 
