@@ -2,7 +2,6 @@ name: Build and Release uWebSockets.js
 
 on:
   workflow_dispatch:
-  push:
   schedule:
     - cron: '0 0 * * *'  # Run daily at midnight UTC
 
