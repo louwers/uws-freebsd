@@ -104,7 +104,7 @@ jobs:
             sed -i '' 's/clang++-18/clang++18/' build.c
             
             # Install dependencies and build
-            sudo pkg install -y cmake llvm18
+            sudo pkg install -y cmake llvm18 libuv
             make
       
       - name: List built files
