@@ -15,7 +15,7 @@ task:
   
   # Run on FreeBSD directly (not in a VM)
   freebsd_instance:
-    image_family: freebsd-14-1
+    image_family: freebsd-14-2
   
   # Only run on main branch for scheduled runs or manual triggers
   only_if: $CIRRUS_BRANCH == "main" || $CIRRUS_CRON == "nightly"
