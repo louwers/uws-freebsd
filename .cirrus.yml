@@ -21,19 +21,20 @@ task:
   only_if: $CIRRUS_BRANCH == "main" || $CIRRUS_CRON == "nightly"
   
   # Environment variables
-  # Note: Configure GITHUB_TOKEN in Cirrus CI repository settings as an encrypted variable
+  # IMPORTANT: You must configure GITHUB_TOKEN in Cirrus CI repository settings as an encrypted variable
+  # The token needs 'contents: write' permission to create releases
   # For instructions, see: https://cirrus-ci.org/guide/writing-tasks/#encrypted-variables
-  # Example: env:
-  #   GITHUB_TOKEN: ENCRYPTED[your_encrypted_token_here]
+  # Example format: GITHUB_TOKEN: ENCRYPTED[your_encrypted_token_here]
   env:
-    GITHUB_TOKEN: ${CIRRUS_REPO_CLONE_TOKEN}
+    # TODO: Replace this with an encrypted GitHub token that has 'contents: write' permission
+    GITHUB_TOKEN: ""
   
   # Check version and determine if build is needed
   check_version_script: |
     pkg install -y curl jq
     
     # Fetch the latest release tag from uNetworking/uWebSockets.js
-    LATEST_VERSION=$(curl -s https://api.github.com/repos/uNetworking/uWebSockets.js/releases/latest | jq -r .tag_name)
+    LATEST_VERSION=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/uNetworking/uWebSockets.js/releases/latest | jq -r .tag_name)
     echo "Latest version: $LATEST_VERSION"
     echo "LATEST_VERSION=$LATEST_VERSION" >> $CIRRUS_ENV
     
@@ -53,7 +54,7 @@ task:
     fi
     
     # Check if a release with this version already exists
-    EXISTING_RELEASE=$(curl -s "https://api.github.com/repos/$CIRRUS_REPO_FULL_NAME/releases/tags/$LATEST_VERSION" | jq -r .id)
+    EXISTING_RELEASE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$CIRRUS_REPO_FULL_NAME/releases/tags/$LATEST_VERSION" | jq -r .id)
     if [ "$EXISTING_RELEASE" != "null" ] && [ -n "$EXISTING_RELEASE" ]; then
       echo "Release $LATEST_VERSION already exists, skipping build"
       echo "SHOULD_BUILD=false" >> $CIRRUS_ENV
