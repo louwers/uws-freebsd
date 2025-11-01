@@ -131,7 +131,11 @@ jobs:
             sed -i.bak 's/clang++-18/clang++18/' build.c && rm -f build.c.bak
             
             # Install dependencies and build
-            pkg install -y cmake llvm18 libuv
+            # Bootstrap pkg if needed and use full path
+            if ! command -v pkg >/dev/null 2>&1; then
+              /usr/sbin/pkg bootstrap -y
+            fi
+            /usr/sbin/pkg install -y cmake llvm18 libuv
             make
       
       - name: List built files
