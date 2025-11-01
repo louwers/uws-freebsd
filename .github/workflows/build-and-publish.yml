@@ -1,14 +1,77 @@
 name: Build and Release uWebSockets.js
 
 on:
-  push:
-    tags:
-      - 'v*'
-  pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at midnight UTC
 
 jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      source_commit: ${{ steps.get-commit.outputs.source_commit }}
+      should_build: ${{ steps.check-release.outputs.should_build }}
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Get latest uWebSockets.js version
+        id: get-version
+        run: |
+          # Fetch the latest release tag from uNetworking/uWebSockets.js
+          LATEST_VERSION=$(gh release view --repo uNetworking/uWebSockets.js --json tagName --jq .tagName)
+          echo "Latest version: $LATEST_VERSION"
+          echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Download and extract source_commit
+        id: get-commit
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          
+          # Download the archive using gh
+          gh release download "$VERSION" \
+            --repo uNetworking/uWebSockets.js \
+            --archive=zip \
+            --output uws.zip
+          
+          # Extract the archive
+          unzip -q uws.zip
+          
+          # Find and read source_commit file
+          EXTRACTED_DIR="uWebSockets.js-${VERSION#v}"
+          if [ -f "$EXTRACTED_DIR/source_commit" ]; then
+            SOURCE_COMMIT=$(cat "$EXTRACTED_DIR/source_commit")
+            echo "Source commit: $SOURCE_COMMIT"
+            echo "source_commit=$SOURCE_COMMIT" >> $GITHUB_OUTPUT
+          else
+            echo "Warning: source_commit file not found"
+            echo "source_commit=" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Check if release exists
+        id: check-release
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          
+          # Check if a release with this version already exists in this repo
+          if gh release view "$VERSION" --repo ${{ github.repository }} >/dev/null 2>&1; then
+            echo "Release $VERSION already exists, skipping build"
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "Release $VERSION does not exist, proceeding with build"
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   build-freebsd:
+    needs: check-version
+    if: needs.check-version.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -23,6 +86,7 @@ jobs:
           repository: uNetworking/uWebSockets.js
           submodules: recursive
           path: uWebSockets.js
+          ref: ${{ needs.check-version.outputs.version }}
       
       - name: Apply FreeBSD patch
         run: |
@@ -55,13 +119,19 @@ jobs:
           fi
       
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: needs.check-version.outputs.should_build == 'true'
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ needs.check-version.outputs.version }}
+          name: ${{ needs.check-version.outputs.version }}
           files: uWebSockets.js/dist/uws_freebsd_x64_*.node
           draft: false
           prerelease: false
           generate_release_notes: true
+          body: |
+            FreeBSD build of uWebSockets.js ${{ needs.check-version.outputs.version }}
+            
+            Source commit: ${{ needs.check-version.outputs.source_commit }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
