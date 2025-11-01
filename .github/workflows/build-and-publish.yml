@@ -131,41 +131,27 @@ jobs:
             sed -i.bak 's/clang++-18/clang++18/' build.c && rm -f build.c.bak
             
             # Install dependencies and build
-            # Bootstrap pkg - FreeBSD might need explicit bootstrap
-            if ! command -v pkg >/dev/null 2>&1; then
-              # Try different bootstrap methods
-              if [ -x /usr/sbin/pkg ]; then
-                /usr/sbin/pkg bootstrap -y
-              elif [ -x /usr/local/sbin/pkg ]; then
-                /usr/local/sbin/pkg bootstrap -y
-              elif [ -f /usr/sbin/pkg-static ]; then
-                /usr/sbin/pkg-static bootstrap -y
-              elif [ -f /usr/local/sbin/pkg-static ]; then
-                /usr/local/sbin/pkg-static bootstrap -y
-              else
-                # Download bootstrap using available tools
-                # Try fetch, wget, curl in order
-                if command -v fetch >/dev/null 2>&1; then
-                  fetch -o /tmp/bootstrap.tar.gz https://pkg.freebsd.org/FreeBSD:14:amd64/latest/bootstrap.tar.gz
-                elif command -v wget >/dev/null 2>&1; then
-                  wget -O /tmp/bootstrap.tar.gz https://pkg.freebsd.org/FreeBSD:14:amd64/latest/bootstrap.tar.gz
-                elif command -v curl >/dev/null 2>&1; then
-                  curl -o /tmp/bootstrap.tar.gz https://pkg.freebsd.org/FreeBSD:14:amd64/latest/bootstrap.tar.gz
-                else
-                  echo "ERROR: No download tool available (fetch/wget/curl)" >&2
-                  exit 1
-                fi
-                tar -xzf /tmp/bootstrap.tar.gz -C /
-                rm -f /tmp/bootstrap.tar.gz
-                # Now try to bootstrap
-                if [ -x /usr/local/sbin/pkg ]; then
-                  /usr/local/sbin/pkg bootstrap -y
-                elif [ -x /usr/sbin/pkg ]; then
-                  /usr/sbin/pkg bootstrap -y
-                fi
-              fi
+            # In FreeBSD, pkg should auto-bootstrap when first run
+            # Just try to use pkg directly - it will bootstrap automatically if needed
+            # Add /usr/local/sbin to PATH if pkg is there
+            export PATH="/usr/local/sbin:/usr/sbin:$PATH"
+            
+            # Try to use pkg - it will bootstrap automatically
+            if command -v pkg >/dev/null 2>&1; then
+              pkg install -y cmake llvm18 libuv
+            elif [ -x /usr/sbin/pkg ]; then
+              /usr/sbin/pkg bootstrap -y
+              /usr/sbin/pkg install -y cmake llvm18 libuv
+            elif [ -x /usr/local/sbin/pkg ]; then
+              /usr/local/sbin/pkg bootstrap -y
+              /usr/local/sbin/pkg install -y cmake llvm18 libuv
+            else
+              # Last resort: try running pkg which should auto-bootstrap
+              ASSUME_ALWAYS_YES=yes pkg install -y cmake llvm18 libuv || {
+                echo "ERROR: Could not find or bootstrap pkg" >&2
+                exit 1
+              }
             fi
-            pkg install -y cmake llvm18 libuv
             make
       
       - name: List built files
