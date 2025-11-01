@@ -104,7 +104,7 @@ jobs:
         with:
           usesh: true
           prepare: |
-            pkg install -y cmake llvm18
+            pkg install -y cmake llvm18 libuv
           run: |
             cd uWebSockets.js
             make
