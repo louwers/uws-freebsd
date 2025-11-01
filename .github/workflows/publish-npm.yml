@@ -2,6 +2,7 @@ name: Publish npm Package with FreeBSD Build
 
 on:
   workflow_dispatch:
+  push:
 
 jobs:
   build-freebsd:
@@ -41,17 +42,10 @@ jobs:
           echo "Source commit: ${SOURCE_COMMIT}"
 
       - name: Clone uWebSockets.js repository
-        run: |
-          git clone --depth 1 --recurse-submodules https://github.com/uNetworking/uWebSockets.js.git
-
-      - name: Checkout specific commit
-        run: |
-          cd uWebSockets.js
-          # Fetch the specific commit
-          git fetch --depth 1 origin ${{ steps.source_commit.outputs.commit }}
-          git checkout ${{ steps.source_commit.outputs.commit }}
-          # Update submodules for this commit
-          git submodule update --init --recursive --depth 1
+        uses: actions/checkout@v4
+        with:
+          recursive: true
+          ref: ${{ steps.source_commit.outputs.commit }}
 
       - name: Prepare build.c for FreeBSD
         run: |
