@@ -1,6 +1,13 @@
-# uws-freebsd
+# @louwers/bws.js
 
-Multi-platform builds of [uWebSockets.js](https://github.com/uNetworking/uWebSockets.js) - a highly scalable WebSocket & HTTP server for Node.js.
+FreeBSD builds of [uWebSockets.js](https://github.com/uNetworking/uWebSockets.js) - a highly scalable WebSocket & HTTP server for Node.js.
+
+> [!IMPORTANT]  
+> This project is not affiliated with [uWebSockets.js](https://github.com/uNetworking/uWebSockets.js). FreeBSD is not an officially supported platform.
+
+## About
+
+This repository exists to build FreeBSD binaries for uWebSockets.js, which are distributed as `@louwers/bws.js` in the GitHub npm registry. Upstream builds for Linux, macOS, and Windows are also included in the package.
 
 ## Installation
 
@@ -8,11 +15,7 @@ Multi-platform builds of [uWebSockets.js](https://github.com/uNetworking/uWebSoc
 npm install @louwers/bws.js
 ```
 
-## About
-
-This repository provides automated builds of uWebSockets.js for multiple platforms including FreeBSD, Linux, and macOS. The native `.node` binaries support multiple Node.js versions.
-
-uWebSockets.js is one of the most performant WebSocket and HTTP server implementations available for Node.js, built on top of the C++ library µWebSockets.
+The package is hosted in the GitHub npm registry. For instructions on authenticating with the GitHub npm registry, see the [GitHub documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry#authenticating-with-a-personal-access-token).
 
 ## Usage
 
@@ -31,57 +34,6 @@ const app = uWS.App().get('/*', (res, req) => {
 ```
 
 For more examples and documentation, see the [uWebSockets.js repository](https://github.com/uNetworking/uWebSockets.js).
-
-## Platform Support
-
-This repository builds binaries for:
-- **FreeBSD x64** - Built in a FreeBSD VM using Clang 18
-- **Linux x64** - Built natively on Ubuntu using Clang
-- **macOS** - Built natively on macOS using Clang
-
-All platforms support multiple Node.js versions (v20, v22, v24, v25).
-
-## Building
-
-### Automated Builds
-
-The workflow can be triggered in two ways:
-
-1. **Manual Dispatch**: Go to the Actions tab and run the "Build and Release uWebSockets.js" workflow
-   - Provide the uWebSockets.js version tag (e.g., `v20.55.0`)
-   - The workflow will create/update a release and build binaries for all platforms
-
-2. **Pull Requests**: Automatically builds (without creating releases) to validate changes
-
-### Build Process
-
-The workflow consists of four jobs:
-
-1. **ensure-release**: Creates or verifies the release exists (workflow_dispatch only)
-2. **build-freebsd**: Builds FreeBSD binaries in a VM and uploads to the release
-3. **build-linux**: Builds Linux binaries natively and uploads to the release
-4. **build-macos**: Builds macOS binaries natively and uploads to the release
-
-### Local Building
-
-To build locally, clone the repository with submodules:
-
-```bash
-git clone --recursive https://github.com/louwers/uws-freebsd.git
-cd uws-freebsd/uWebSockets.js
-git checkout <version-tag>  # e.g., v20.55.0
-git submodule update --init --recursive
-
-# For FreeBSD
-cd uWebSockets.js
-# Prepend FreeBSD defines to build.c
-{ echo '#define OS "freebsd"'; echo '#define __linux 1'; cat build.c; } > build.c.tmp && mv build.c.tmp build.c
-make
-
-# For Linux/macOS
-cd uWebSockets.js
-make
-```
 
 ## License
 
