@@ -27,7 +27,7 @@ task:
   # Example format: GITHUB_TOKEN: ENCRYPTED[your_encrypted_token_here]
   env:
     # TODO: Replace this with an encrypted GitHub token that has 'contents: write' permission
-    GITHUB_TOKEN: ""
+    GITHUB_TOKEN: "ENCRYPTED[!a0811a061851e948597ed771bdd44c85b69b796f8284ff0f0b20476e4324ca670f7174ba90185e4185302b589e8867ea!]"
   
   # Check version and determine if build is needed
   check_version_script: |
