@@ -98,9 +98,9 @@ jobs:
             echo '#define __linux 1' > build.c.temp
             cat build.c >> build.c.temp
             mv build.c.temp build.c
-            sed -i '' 's/#define OS "linux"/#define OS "freebsd"/' build.c
-            sed -i '' 's/clang-18/clang18/' build.c
-            sed -i '' 's/clang++-18/clang++18/' build.c
+            sed -i.bak 's|#define OS "linux"|#define OS "freebsd"|' build.c && rm build.c.bak
+            sed -i.bak 's/clang-18/clang18/' build.c && rm build.c.bak
+            sed -i.bak 's/clang++-18/clang++18/' build.c && rm build.c.bak
             
             # Install dependencies and build
             sudo pkg install -y cmake llvm18 libuv
