@@ -138,9 +138,7 @@ task:
     pkg install -y gh
     
     # Create release with built artifacts
-    NOTES="FreeBSD build of uWebSockets.js $LATEST_VERSION
-
-Source commit: https://github.com/uNetworking/uWebSockets.js/commit/$SOURCE_COMMIT"
+    NOTES=$(printf "FreeBSD build of uWebSockets.js %s\n\nSource commit: https://github.com/uNetworking/uWebSockets.js/commit/%s" "$LATEST_VERSION" "$SOURCE_COMMIT")
     
     gh release create "$LATEST_VERSION" \
       --repo "$CIRRUS_REPO_FULL_NAME" \
