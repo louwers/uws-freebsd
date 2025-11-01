@@ -65,7 +65,9 @@ jobs:
         run: |
           cd uWebSockets.js
           # Prepend FreeBSD defines to build.c to make it build as Linux
-          { echo '#define OS "freebsd"'; echo '#define __linux 1'; cat build.c; } > build.c.tmp && mv build.c.tmp build.c
+          # This allows FreeBSD to use Linux build paths while producing freebsd-named binaries
+          { echo '#define OS "freebsd"'; echo '#define __linux 1'; cat build.c; } > build.c.tmp
+          mv build.c.tmp build.c
 
       - name: Build in FreeBSD VM
         uses: vmactions/freebsd-vm@v1
