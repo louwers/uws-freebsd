@@ -70,6 +70,8 @@ task:
       echo "Skipping clone as build is not needed"
       exit 0
     fi
+
+    pkg install -y git
     
     # Clone uWebSockets.js repository with submodules
     git clone --recursive https://github.com/uNetworking/uWebSockets.js.git
