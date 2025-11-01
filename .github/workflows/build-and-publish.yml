@@ -1,0 +1,67 @@
+name: Build and Release uWebSockets.js
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-freebsd:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+      
+      - name: Checkout uWebSockets.js repository
+        uses: actions/checkout@v4
+        with:
+          repository: uNetworking/uWebSockets.js
+          submodules: recursive
+          path: uWebSockets.js
+      
+      - name: Apply FreeBSD patch
+        run: |
+          cd uWebSockets.js
+          echo '#define __linux 1' > build.c.temp
+          cat build.c > build.c.temp
+          mv build.c.temp build.c
+          sed -i 's/#define OS "linux"/#define OS "freebsd"/' build.c
+          sed -i 's/clang-18/clang18/' build.c
+          sed -i 's/clang++-18/clang++18/' build.c
+      
+      - name: Build in FreeBSD VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          prepare: |
+            pkg install -y cmake llvm18
+          run: |
+            cd uWebSockets.js
+            make
+      
+      - name: List built files
+        run: |
+          cd uWebSockets.js
+          if [ -d "dist" ]; then
+            ls -lh dist/
+          else
+            echo "Warning: dist directory not found"
+            exit 1
+          fi
+      
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: uWebSockets.js/dist/uws_freebsd_x64_*.node
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
