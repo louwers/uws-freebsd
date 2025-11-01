@@ -75,8 +75,7 @@ git submodule update --init --recursive
 # For FreeBSD
 cd uWebSockets.js
 # Prepend FreeBSD defines to build.c
-echo '#define OS "freebsd"' | cat - build.c > build.c.tmp && mv build.c.tmp build.c
-sed -i '1i#define __linux 1' build.c
+{ echo '#define OS "freebsd"'; echo '#define __linux 1'; cat build.c; } > build.c.tmp && mv build.c.tmp build.c
 make
 
 # For Linux/macOS
