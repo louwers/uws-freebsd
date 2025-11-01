@@ -132,9 +132,8 @@ jobs:
             
             # Install dependencies and build
             # Bootstrap pkg - FreeBSD might need explicit bootstrap
-            # Try to find and use pkg-static for bootstrapping
             if ! command -v pkg >/dev/null 2>&1; then
-              # Try different locations for pkg-static (bootstrap script)
+              # Try different bootstrap methods
               if [ -x /usr/sbin/pkg ]; then
                 /usr/sbin/pkg bootstrap -y
               elif [ -x /usr/local/sbin/pkg ]; then
@@ -144,8 +143,26 @@ jobs:
               elif [ -f /usr/local/sbin/pkg-static ]; then
                 /usr/local/sbin/pkg-static bootstrap -y
               else
-                # Download and run bootstrap script
-                ASSUME_ALWAYS_YES=yes fetch -o - https://pkg.freebsd.org/FreeBSD:14:amd64/latest/bootstrap.tar.gz | tar -xzf - -C / && /usr/local/sbin/pkg bootstrap -y
+                # Download bootstrap using available tools
+                # Try fetch, wget, curl in order
+                if command -v fetch >/dev/null 2>&1; then
+                  fetch -o /tmp/bootstrap.tar.gz https://pkg.freebsd.org/FreeBSD:14:amd64/latest/bootstrap.tar.gz
+                elif command -v wget >/dev/null 2>&1; then
+                  wget -O /tmp/bootstrap.tar.gz https://pkg.freebsd.org/FreeBSD:14:amd64/latest/bootstrap.tar.gz
+                elif command -v curl >/dev/null 2>&1; then
+                  curl -o /tmp/bootstrap.tar.gz https://pkg.freebsd.org/FreeBSD:14:amd64/latest/bootstrap.tar.gz
+                else
+                  echo "ERROR: No download tool available (fetch/wget/curl)" >&2
+                  exit 1
+                fi
+                tar -xzf /tmp/bootstrap.tar.gz -C /
+                rm -f /tmp/bootstrap.tar.gz
+                # Now try to bootstrap
+                if [ -x /usr/local/sbin/pkg ]; then
+                  /usr/local/sbin/pkg bootstrap -y
+                elif [ -x /usr/sbin/pkg ]; then
+                  /usr/sbin/pkg bootstrap -y
+                fi
               fi
             fi
             pkg install -y cmake llvm18 libuv
