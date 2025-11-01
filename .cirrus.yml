@@ -20,11 +20,13 @@ task:
   # Only run on main branch for scheduled runs or manual triggers
   only_if: $CIRRUS_BRANCH == "main" || $CIRRUS_CRON == "nightly"
   
+  # Environment variables
+  # Note: Configure GITHUB_TOKEN in Cirrus CI repository settings as an encrypted variable
+  # For instructions, see: https://cirrus-ci.org/guide/writing-tasks/#encrypted-variables
+  # Example: env:
+  #   GITHUB_TOKEN: ENCRYPTED[your_encrypted_token_here]
   env:
-    # GitHub token for creating releases
-    # Configure this in Cirrus CI repository settings as an encrypted variable
-    # For instructions, see: https://cirrus-ci.org/guide/writing-tasks/#encrypted-variables
-    GITHUB_TOKEN: ENCRYPTED[!TO_BE_CONFIGURED_IN_CIRRUS_CI_SETTINGS!]
+    GITHUB_TOKEN: ${CIRRUS_REPO_CLONE_TOKEN}
   
   # Check version and determine if build is needed
   check_version_script: |
@@ -133,10 +135,12 @@ task:
     pkg install -y gh
     
     # Create release with built artifacts
+    NOTES="FreeBSD build of uWebSockets.js $LATEST_VERSION
+
+Source commit: https://github.com/uNetworking/uWebSockets.js/commit/$SOURCE_COMMIT"
+    
     gh release create "$LATEST_VERSION" \
       --repo "$CIRRUS_REPO_FULL_NAME" \
       --title "$LATEST_VERSION" \
-      --notes "FreeBSD build of uWebSockets.js $LATEST_VERSION
-
-Source commit: https://github.com/uNetworking/uWebSockets.js/commit/$SOURCE_COMMIT" \
+      --notes "$NOTES" \
       dist/uws_freebsd_x64_*.node
