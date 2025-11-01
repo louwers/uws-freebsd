@@ -125,6 +125,7 @@ jobs:
       - name: Build for Linux
         run: |
           cd uWebSockets.js
+          ls
           make
 
       - name: List built files
@@ -176,6 +177,7 @@ jobs:
         run: |
           ls
           cd uWebSockets.js
+          ls
           make
 
       - name: List built files
