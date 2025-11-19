@@ -125,6 +125,18 @@ task:
       exit 1
     fi
   
+  # Run smoke tests
+  test_script: |
+    if [ "$SHOULD_BUILD" != "true" ]; then
+      echo "Skipping tests as build is not needed"
+      exit 0
+    fi
+
+    pkg install -y npm
+
+    cd uWebSockets.js
+    cd tests && npm install ws && node smoke.js
+
   # Create GitHub release
   release_script: |
     if [ "$SHOULD_BUILD" != "true" ]; then
