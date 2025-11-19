@@ -17,8 +17,8 @@ task:
   freebsd_instance:
     image_family: freebsd-14-2
   
-  # Only run on main branch for scheduled runs or manual triggers
-  only_if: $CIRRUS_BRANCH == "main" || $CIRRUS_CRON == "nightly"
+  # Only run on main branch for scheduled runs or manual triggers, or on PRs
+  only_if: $CIRRUS_BRANCH == "main" || $CIRRUS_CRON == "nightly" || $CIRRUS_PR != ""
   
   # Environment variables
   # IMPORTANT: You must configure GITHUB_TOKEN in Cirrus CI repository settings as an encrypted variable
@@ -55,7 +55,10 @@ task:
     
     # Check if a release with this version already exists
     EXISTING_RELEASE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$CIRRUS_REPO_FULL_NAME/releases/tags/$LATEST_VERSION" | jq -r .id)
-    if [ "$EXISTING_RELEASE" != "null" ] && [ -n "$EXISTING_RELEASE" ]; then
+    if [ -n "$CIRRUS_PR" ]; then
+      echo "Running in PR, forcing build"
+      echo "SHOULD_BUILD=true" >> $CIRRUS_ENV
+    elif [ "$EXISTING_RELEASE" != "null" ] && [ -n "$EXISTING_RELEASE" ]; then
       echo "Release $LATEST_VERSION already exists, skipping build"
       echo "SHOULD_BUILD=false" >> $CIRRUS_ENV
       exit 0
@@ -139,6 +142,10 @@ task:
 
   # Create GitHub release
   release_script: |
+    if [ -n "$CIRRUS_PR" ]; then
+      echo "Skipping release for PR"
+      exit 0
+    fi
     if [ "$SHOULD_BUILD" != "true" ]; then
       echo "Skipping release as build was not performed"
       exit 0
