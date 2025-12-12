@@ -2,7 +2,7 @@ task:
   name: Build and Release uWebSockets.js on FreeBSD
   
   freebsd_instance:
-    image_family: freebsd-14-2
+    image_family: freebsd-15-0-amd64-zfs
   
   # Only run on main branch for scheduled runs or manual triggers, or on PRs
   only_if: $CIRRUS_BRANCH == "main" || $CIRRUS_CRON == "nightly" || $CIRRUS_PR != ""
