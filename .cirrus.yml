@@ -116,7 +116,7 @@ task:
       exit 0
     fi
 
-    pkg install -y npm
+    pkg install -y npm node25
 
     cd uWebSockets.js
     cd tests && npm install ws && node smoke.js
