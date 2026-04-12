@@ -1,3 +1,6 @@
+> [!NOTE]  
+> Cirrus CI is shutting down, archiving this repo.
+
 # uws-freebsd
 
 ![Cirrus CI - Specific Branch Build Status](https://img.shields.io/cirrus/github/louwers/uws-freebsd/main) ![](https://img.shields.io/badge/FreeBSD-AB2B28?style=flat&logo=freebsd&logoColor=white)
